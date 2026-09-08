@@ -133,6 +133,14 @@ const deleteDepartment = async (req, res) => {
   } catch (error) {
     console.error("Error deleting department:", error.message);
 
+    if (error.code === "ER_ROW_IS_REFERENCED_2") {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Cannot delete department because employees are assigned to it"
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Failed to delete department"
