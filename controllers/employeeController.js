@@ -1,14 +1,74 @@
 const employeeModel = require("../models/employeeModel");
 
-// Get all employees
+// Get all employees with pagination, search, department filter, and status filter
 const getAllEmployees = async (req, res) => {
   try {
-    const employees = await employeeModel.getAllEmployees();
+    let {
+      page = 1,
+      limit = 10,
+      search = "",
+      departmentId = "",
+      status = ""
+    } = req.query;
+
+    page = Number(page);
+    limit = Number(limit);
+
+    // Pagination validation
+    if (!Number.isInteger(page) || page <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Page must be a positive integer"
+      });
+    }
+
+    if (!Number.isInteger(limit) || limit <= 0 || limit > 100) {
+      return res.status(400).json({
+        success: false,
+        message: "Limit must be between 1 and 100"
+      });
+    }
+
+    // Department filter validation
+    if (
+      departmentId &&
+      (!Number.isInteger(Number(departmentId)) ||
+        Number(departmentId) <= 0)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Department ID must be a valid positive number"
+      });
+    }
+
+    // Status filter validation
+    if (status && !["Active", "Inactive"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Status must be either Active or Inactive"
+      });
+    }
+
+    const result = await employeeModel.getAllEmployees({
+      page,
+      limit,
+      search,
+      departmentId,
+      status
+    });
+
+    const totalPages = Math.ceil(result.total / limit);
 
     res.status(200).json({
       success: true,
-      count: employees.length,
-      data: employees
+      count: result.employees.length,
+      pagination: {
+        page,
+        limit,
+        totalRecords: result.total,
+        totalPages
+      },
+      data: result.employees
     });
   } catch (error) {
     console.error("Error fetching employees:", error.message);
@@ -69,7 +129,6 @@ const createEmployee = async (req, res) => {
       status
     } = req.body;
 
-    // Required field validation
     if (
       !employeeCode ||
       !fullName ||
@@ -86,7 +145,6 @@ const createEmployee = async (req, res) => {
       });
     }
 
-    // Email validation
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(email)) {
@@ -96,7 +154,6 @@ const createEmployee = async (req, res) => {
       });
     }
 
-    // Mobile validation
     const mobilePattern = /^[0-9]{10,15}$/;
 
     if (!mobilePattern.test(String(mobile))) {
@@ -106,15 +163,16 @@ const createEmployee = async (req, res) => {
       });
     }
 
-    // Department ID validation
-    if (!Number.isInteger(Number(departmentId)) || Number(departmentId) <= 0) {
+    if (
+      !Number.isInteger(Number(departmentId)) ||
+      Number(departmentId) <= 0
+    ) {
       return res.status(400).json({
         success: false,
         message: "Department ID must be a valid positive number"
       });
     }
 
-    // Salary validation
     if (isNaN(Number(salary)) || Number(salary) < 0) {
       return res.status(400).json({
         success: false,
@@ -122,7 +180,6 @@ const createEmployee = async (req, res) => {
       });
     }
 
-    // Status validation
     if (status && !["Active", "Inactive"].includes(status)) {
       return res.status(400).json({
         success: false,
@@ -193,7 +250,6 @@ const updateEmployee = async (req, res) => {
       status
     } = req.body;
 
-    // Required field validation
     if (
       !employeeCode ||
       !fullName ||
@@ -210,7 +266,6 @@ const updateEmployee = async (req, res) => {
       });
     }
 
-    // Email validation
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailPattern.test(email)) {
@@ -220,7 +275,6 @@ const updateEmployee = async (req, res) => {
       });
     }
 
-    // Mobile validation
     const mobilePattern = /^[0-9]{10,15}$/;
 
     if (!mobilePattern.test(String(mobile))) {
@@ -230,15 +284,16 @@ const updateEmployee = async (req, res) => {
       });
     }
 
-    // Department ID validation
-    if (!Number.isInteger(Number(departmentId)) || Number(departmentId) <= 0) {
+    if (
+      !Number.isInteger(Number(departmentId)) ||
+      Number(departmentId) <= 0
+    ) {
       return res.status(400).json({
         success: false,
         message: "Department ID must be a valid positive number"
       });
     }
 
-    // Salary validation
     if (isNaN(Number(salary)) || Number(salary) < 0) {
       return res.status(400).json({
         success: false,
@@ -246,7 +301,6 @@ const updateEmployee = async (req, res) => {
       });
     }
 
-    // Status validation
     if (status && !["Active", "Inactive"].includes(status)) {
       return res.status(400).json({
         success: false,

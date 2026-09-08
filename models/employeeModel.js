@@ -1,7 +1,49 @@
 const db = require("../config/db");
 
-const getAllEmployees = async () => {
-  const [rows] = await db.execute(`
+const getAllEmployees = async ({
+  page = 1,
+  limit = 10,
+  search = "",
+  departmentId = "",
+  status = ""
+}) => {
+  const offset = (page - 1) * limit;
+
+  let whereClause = "WHERE 1 = 1";
+  const queryParams = [];
+
+  if (search) {
+    whereClause += `
+      AND (
+        e.employeeCode LIKE ?
+        OR e.fullName LIKE ?
+        OR e.email LIKE ?
+        OR e.designation LIKE ?
+      )
+    `;
+
+    const searchValue = `%${search}%`;
+
+    queryParams.push(
+      searchValue,
+      searchValue,
+      searchValue,
+      searchValue
+    );
+  }
+
+  if (departmentId) {
+    whereClause += " AND e.departmentId = ?";
+    queryParams.push(Number(departmentId));
+  }
+
+  if (status) {
+    whereClause += " AND e.status = ?";
+    queryParams.push(status);
+  }
+
+  const [rows] = await db.execute(
+    `
     SELECT
       e.id,
       e.employeeCode,
@@ -17,10 +59,28 @@ const getAllEmployees = async () => {
     FROM employees e
     JOIN departments d
       ON e.departmentId = d.id
-    ORDER BY e.id;
-  `);
+    ${whereClause}
+    ORDER BY e.id
+    LIMIT ${Number(limit)} OFFSET ${Number(offset)}
+    `,
+    queryParams
+  );
 
-  return rows;
+  const [countRows] = await db.execute(
+    `
+    SELECT COUNT(*) AS total
+    FROM employees e
+    JOIN departments d
+      ON e.departmentId = d.id
+    ${whereClause}
+    `,
+    queryParams
+  );
+
+  return {
+    employees: rows,
+    total: Number(countRows[0].total)
+  };
 };
 
 const getEmployeeById = async (id) => {
